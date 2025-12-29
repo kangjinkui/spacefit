@@ -3,4 +3,5 @@
 set -o errexit
 
 bundle install
-bundle exec rake db:prepare
+# Assets precompilation (if needed in future)
+# bundle exec rake assets:precompile

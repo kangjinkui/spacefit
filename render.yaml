@@ -6,17 +6,7 @@ services:
     buildCommand: "./bin/render-build.sh"
     startCommand: "bundle exec puma -C config/puma.rb"
     envVars:
-      - key: DATABASE_URL
-        fromDatabase:
-          name: spacefit-db
-          property: connectionString
       - key: RAILS_MASTER_KEY
         sync: false
       - key: KAKAO_API_KEY
         sync: false
-
-databases:
-  - name: spacefit-db
-    plan: free
-    databaseName: space_fit_production
-    user: spacefit
