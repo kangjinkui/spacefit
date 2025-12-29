@@ -20,7 +20,13 @@ class AreaAnalyzer
     risk_score = factory_count
     recommendation = risk_score.zero? ? '주거 최적' : '주거 부적합'
 
-    # 4. 결과 반환
+    # 4. POI 리스트 생성 (지도 마커용)
+    poi_list = []
+    poi_list += pois[:medical].map { |p| format_poi(p, 'HP8') }
+    poi_list += pois[:schools].map { |p| format_poi(p, 'SC4') }
+    poi_list += pois[:factories].map { |p| format_poi(p, 'FD6') }
+
+    # 5. 결과 반환
     {
       address: location[:address],
       coordinates: {
@@ -33,10 +39,23 @@ class AreaAnalyzer
         recommend: recommendation
       },
       details: {
-        medical: medical_count,
-        schools: school_count,
-        factories: factory_count
-      }
+        HP8: medical_count,
+        SC4: school_count,
+        FD6: factory_count
+      },
+      poi_list: poi_list
+    }
+  end
+
+  private
+
+  def format_poi(poi, category_code)
+    {
+      name: poi['place_name'],
+      category_group_code: category_code,
+      x: poi['x'].to_f,
+      y: poi['y'].to_f,
+      address: poi['address_name']
     }
   end
 end

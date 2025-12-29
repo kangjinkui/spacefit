@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SpaceFit - 지역 분석 서비스</title>
+  <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=fb649cbf91b24f21ad0d825caecad47a&libraries=services"></script>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: #f5f7fa;
+      color: #2c3e50;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    header {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 30px 0;
+      margin-bottom: 30px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    h1 {
+      text-align: center;
+      font-size: 2.5em;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .subtitle {
+      text-align: center;
+      font-size: 1.1em;
+      opacity: 0.9;
+    }
+
+    .search-box {
+      background: white;
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 2px 20px rgba(0,0,0,0.08);
+      margin-bottom: 30px;
+    }
+
+    .input-group {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      padding: 15px 20px;
+      font-size: 16px;
+      border: 2px solid #e0e6ed;
+      border-radius: 10px;
+      outline: none;
+      transition: border-color 0.3s;
+    }
+
+    input[type="text"]:focus {
+      border-color: #667eea;
+    }
+
+    button {
+      padding: 15px 40px;
+      font-size: 16px;
+      font-weight: 600;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    .content-grid {
+      display: grid;
+      grid-template-columns: 1fr 400px;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+
+    .map-container {
+      background: white;
+      border-radius: 15px;
+      overflow: hidden;
+      box-shadow: 0 2px 20px rgba(0,0,0,0.08);
+    }
+
+    #map {
+      width: 100%;
+      height: 600px;
+    }
+
+    .results-panel {
+      background: white;
+      border-radius: 15px;
+      padding: 25px;
+      box-shadow: 0 2px 20px rgba(0,0,0,0.08);
+      max-height: 600px;
+      overflow-y: auto;
+    }
+
+    .score-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      padding: 25px;
+      border-radius: 12px;
+      text-align: center;
+      margin-bottom: 25px;
+    }
+
+    .score-value {
+      font-size: 3em;
+      font-weight: 700;
+      margin: 10px 0;
+    }
+
+    .score-label {
+      font-size: 1.1em;
+      opacity: 0.9;
+    }
+
+    .category-item {
+      padding: 15px;
+      margin-bottom: 12px;
+      background: #f8f9fa;
+      border-radius: 10px;
+      border-left: 4px solid #667eea;
+    }
+
+    .category-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .category-name {
+      font-weight: 600;
+      font-size: 1.05em;
+    }
+
+    .category-count {
+      background: #667eea;
+      color: white;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.9em;
+      font-weight: 600;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #667eea;
+      font-size: 1.1em;
+    }
+
+    .error {
+      background: #fee;
+      color: #c33;
+      padding: 15px;
+      border-radius: 8px;
+      margin-bottom: 15px;
+    }
+
+    .marker-legend {
+      background: white;
+      padding: 20px;
+      border-radius: 15px;
+      box-shadow: 0 2px 20px rgba(0,0,0,0.08);
+    }
+
+    .legend-title {
+      font-weight: 600;
+      margin-bottom: 15px;
+      font-size: 1.1em;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .legend-color {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      margin-right: 10px;
+    }
+
+    @media (max-width: 1024px) {
+      .content-grid {
+        grid-template-columns: 1fr;
+      }
+
+      #map {
+        height: 400px;
+      }
+
+      .results-panel {
+        max-height: none;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <h1>🏠 SpaceFit</h1>
+      <p class="subtitle">주소를 입력하면 주변 편의시설을 분석해드립니다</p>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="search-box">
+      <div class="input-group">
+        <input type="text" id="address" placeholder="예: 서울 강남구 역삼동 123" />
+        <button onclick="searchAddress()">분석하기</button>
+      </div>
+      <div id="error-message"></div>
+    </div>
+
+    <div class="content-grid">
+      <div class="map-container">
+        <div id="map"></div>
+      </div>
+
+      <div class="results-panel" id="results">
+        <p style="text-align: center; color: #999; padding: 100px 20px;">
+          주소를 입력하고 분석하기 버튼을 눌러주세요
+        </p>
+      </div>
+    </div>
+
+    <div class="marker-legend">
+      <div class="legend-title">📍 마커 범례</div>
+      <div class="legend-item">
+        <div class="legend-color" style="background: #e74c3c;"></div>
+        <span>검색 위치</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background: #3498db;"></div>
+        <span>병원 (HP8)</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background: #2ecc71;"></div>
+        <span>학교 (SC4)</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background: #e67e22;"></div>
+        <span>공장 (FD6)</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let map;
+    let markers = [];
+    let geocoder;
+
+    // 카카오맵 초기화
+    window.onload = function() {
+      const container = document.getElementById('map');
+      const options = {
+        center: new kakao.maps.LatLng(37.5665, 126.9780), // 서울 중심
+        level: 5
+      };
+
+      map = new kakao.maps.Map(container, options);
+      geocoder = new kakao.maps.services.Geocoder();
+    };
+
+    // 마커 색상 정의
+    const categoryColors = {
+      'HP8': '#3498db',  // 병원 - 파랑
+      'SC4': '#2ecc71',  // 학교 - 초록
+      'FD6': '#e67e22'   // 공장 - 주황
+    };
+
+    const categoryNames = {
+      'HP8': '병원',
+      'SC4': '학교',
+      'FD6': '공장'
+    };
+
+    // 주소 검색 및 분석
+    async function searchAddress() {
+      const address = document.getElementById('address').value.trim();
+      const errorDiv = document.getElementById('error-message');
+      const resultsDiv = document.getElementById('results');
+
+      errorDiv.innerHTML = '';
+
+      if (!address) {
+        errorDiv.innerHTML = '<div class="error">주소를 입력해주세요.</div>';
+        return;
+      }
+
+      resultsDiv.innerHTML = '<div class="loading">🔍 분석 중...</div>';
+      clearMarkers();
+
+      try {
+        const response = await fetch(`/api/analyze?address=${encodeURIComponent(address)}`);
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.error || '분석에 실패했습니다.');
+        }
+
+        displayResults(data);
+        displayOnMap(data);
+      } catch (error) {
+        errorDiv.innerHTML = `<div class="error">❌ ${error.message}</div>`;
+        resultsDiv.innerHTML = '<p style="text-align: center; color: #999;">분석 결과가 없습니다.</p>';
+      }
+    }
+
+    // 결과 표시
+    function displayResults(data) {
+      const resultsDiv = document.getElementById('results');
+
+      const convenientScore = data.analysis?.convenience || 0;
+      const riskScore = data.analysis?.risk || 0;
+      const totalScore = convenientScore - riskScore;
+
+      let html = `
+        <div class="score-card">
+          <div class="score-label">종합 점수</div>
+          <div class="score-value">${totalScore}</div>
+          <div class="score-label">${data.analysis?.recommend || '분석 완료'}</div>
+        </div>
+
+        <h3 style="margin-bottom: 15px; color: #2c3e50;">📊 상세 분석</h3>
+      `;
+
+      if (data.details) {
+        Object.entries(data.details).forEach(([category, count]) => {
+          const displayName = categoryNames[category] || category;
+          html += `
+            <div class="category-item">
+              <div class="category-header">
+                <span class="category-name">${displayName}</span>
+                <span class="category-count">${count}개</span>
+              </div>
+            </div>
+          `;
+        });
+      }
+
+      html += `
+        <div style="margin-top: 20px; padding: 15px; background: #f0f4ff; border-radius: 8px; font-size: 0.9em; color: #555;">
+          <strong>📍 위치:</strong> ${data.address || '정보 없음'}<br>
+          <strong>🗺️ 좌표:</strong> ${data.coordinates?.lat?.toFixed(4)}, ${data.coordinates?.lng?.toFixed(4)}
+        </div>
+      `;
+
+      resultsDiv.innerHTML = html;
+    }
+
+    // 지도에 마커 표시
+    function displayOnMap(data) {
+      if (!data.coordinates) return;
+
+      const position = new kakao.maps.LatLng(data.coordinates.lat, data.coordinates.lng);
+
+      // 지도 중심 이동
+      map.setCenter(position);
+      map.setLevel(4);
+
+      // 검색 위치 마커 (빨강)
+      const mainMarker = new kakao.maps.Marker({
+        map: map,
+        position: position,
+        title: data.address
+      });
+
+      // 마커 색상 변경 (빨강)
+      const mainContent = `<div style="background: #e74c3c; width: 12px; height: 12px; border-radius: 50%; border: 3px solid white; box-shadow: 0 0 5px rgba(0,0,0,0.3);"></div>`;
+      const mainCustomOverlay = new kakao.maps.CustomOverlay({
+        position: position,
+        content: mainContent
+      });
+      mainCustomOverlay.setMap(map);
+
+      markers.push(mainMarker);
+
+      // POI 마커 추가 (임시 - 실제로는 서버에서 POI 좌표를 받아와야 함)
+      // 현재는 랜덤 위치에 표시
+      if (data.poi_list) {
+        data.poi_list.forEach(poi => {
+          if (poi.x && poi.y) {
+            const poiPosition = new kakao.maps.LatLng(poi.y, poi.x);
+            const color = categoryColors[poi.category_group_code] || '#95a5a6';
+
+            const content = `<div style="background: ${color}; width: 8px; height: 8px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 3px rgba(0,0,0,0.3);"></div>`;
+            const customOverlay = new kakao.maps.CustomOverlay({
+              position: poiPosition,
+              content: content
+            });
+            customOverlay.setMap(map);
+          }
+        });
+      }
+    }
+
+    // 마커 지우기
+    function clearMarkers() {
+      markers.forEach(marker => marker.setMap(null));
+      markers = [];
+    }
+
+    // 엔터키 이벤트
+    document.getElementById('address').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        searchAddress();
+      }
+    });
+  </script>
+</body>
+</html>
