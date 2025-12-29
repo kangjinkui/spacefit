@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(rails new:*)",
+      "Bash(ruby --version)",
+      "Bash(gem list:*)",
+      "Bash(bundle install:*)",
+      "Bash(pg_ctl:*)",
+      "Bash(net start:*)",
+      "Bash(sc query:*)",
+      "Bash(findstr:*)",
+      "Bash(bin/rails:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
