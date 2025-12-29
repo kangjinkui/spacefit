@@ -277,36 +277,10 @@
     </div>
   </div>
 
-  <!-- Kakao Maps SDK -->
-  <script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=<%= @kakao_api_key %>&libraries=services&autoload=false"></script>
-
   <script>
     let map;
     let markers = [];
     let geocoder;
-
-    // 카카오맵 초기화 - SDK 로드 대기
-    function waitForKakao() {
-      if (typeof kakao !== 'undefined' && kakao.maps) {
-        kakao.maps.load(function() {
-          const container = document.getElementById('map');
-          const options = {
-            center: new kakao.maps.LatLng(37.5665, 126.9780), // 서울 중심
-            level: 5
-          };
-
-          map = new kakao.maps.Map(container, options);
-          geocoder = new kakao.maps.services.Geocoder();
-          console.log('✅ Kakao Maps initialized successfully');
-        });
-      } else {
-        console.log('⏳ Waiting for Kakao SDK...');
-        setTimeout(waitForKakao, 100);
-      }
-    }
-
-    // SDK 로드 대기
-    waitForKakao();
 
     // 마커 색상 정의
     const categoryColors = {
@@ -453,6 +427,23 @@
         searchAddress();
       }
     });
+
+    // 카카오맵 초기화 함수
+    function initKakaoMap() {
+      console.log('🔧 Initializing Kakao Maps...');
+      const container = document.getElementById('map');
+      const options = {
+        center: new kakao.maps.LatLng(37.5665, 126.9780),
+        level: 5
+      };
+
+      map = new kakao.maps.Map(container, options);
+      geocoder = new kakao.maps.services.Geocoder();
+      console.log('✅ Kakao Maps initialized successfully');
+    }
   </script>
+
+  <!-- Kakao Maps SDK - 마지막에 로드하고 콜백으로 초기화 -->
+  <script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=<%= @kakao_api_key %>&libraries=services&autoload=false" onload="kakao.maps.load(initKakaoMap)"></script>
 </body>
 </html>
