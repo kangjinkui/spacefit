@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SpaceFit - 지역 분석 서비스</title>
-  <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=fb649cbf91b24f21ad0d825caecad47a&libraries=services"></script>
+  <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=<%= @kakao_api_key %>&libraries=services"></script>
   <style>
     * {
       margin: 0;
@@ -283,7 +283,12 @@
     let geocoder;
 
     // 카카오맵 초기화
-    window.onload = function() {
+    function initMap() {
+      if (typeof kakao === 'undefined' || !kakao.maps) {
+        console.error('Kakao Maps SDK not loaded');
+        return;
+      }
+
       const container = document.getElementById('map');
       const options = {
         center: new kakao.maps.LatLng(37.5665, 126.9780), // 서울 중심
@@ -292,7 +297,14 @@
 
       map = new kakao.maps.Map(container, options);
       geocoder = new kakao.maps.services.Geocoder();
-    };
+    }
+
+    // DOMContentLoaded 이벤트 사용
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initMap);
+    } else {
+      initMap();
+    }
 
     // 마커 색상 정의
     const categoryColors = {
