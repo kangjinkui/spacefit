@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>SpaceFit - 지역 분석 서비스</title>
-  <script type="text/javascript" src="//dapi.kakao.com/v2/maps/sdk.js?appkey=<%= @kakao_api_key %>&libraries=services"></script>
+  <script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=<%= @kakao_api_key %>&libraries=services&autoload=false"></script>
   <style>
     * {
       margin: 0;
@@ -284,26 +284,24 @@
 
     // 카카오맵 초기화
     function initMap() {
-      if (typeof kakao === 'undefined' || !kakao.maps) {
-        console.error('Kakao Maps SDK not loaded');
-        return;
-      }
+      kakao.maps.load(function() {
+        const container = document.getElementById('map');
+        const options = {
+          center: new kakao.maps.LatLng(37.5665, 126.9780), // 서울 중심
+          level: 5
+        };
 
-      const container = document.getElementById('map');
-      const options = {
-        center: new kakao.maps.LatLng(37.5665, 126.9780), // 서울 중심
-        level: 5
-      };
-
-      map = new kakao.maps.Map(container, options);
-      geocoder = new kakao.maps.services.Geocoder();
+        map = new kakao.maps.Map(container, options);
+        geocoder = new kakao.maps.services.Geocoder();
+        console.log('Kakao Maps initialized successfully');
+      });
     }
 
-    // DOMContentLoaded 이벤트 사용
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', initMap);
-    } else {
+    // 스크립트 로드 확인 및 초기화
+    if (typeof kakao !== 'undefined') {
       initMap();
+    } else {
+      console.error('Kakao SDK not loaded. Please check your API key and internet connection.');
     }
 
     // 마커 색상 정의
