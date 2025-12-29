@@ -3,7 +3,8 @@ class HomeController < ApplicationController
   skip_before_action :verify_authenticity_token
 
   def index
-    @kakao_api_key = ENV['KAKAO_API_KEY'] || 'fb649cbf91b24f21ad0d825caecad47a'
+    # Use JavaScript API key for Maps SDK (not REST API key)
+    @kakao_api_key = ENV['KAKAO_JAVASCRIPT_KEY'] || '6f4a0b013fa4cd9542bb6af9232b9516'
     render html: render_to_string(template: 'home/index', layout: false).html_safe
   end
 end
