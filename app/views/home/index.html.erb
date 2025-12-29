@@ -212,6 +212,78 @@
       margin-right: 10px;
     }
 
+    .facility-info {
+      margin-top: 20px;
+      padding: 15px;
+      background: #f8f9fa;
+      border-radius: 10px;
+      border-left: 4px solid #667eea;
+    }
+
+    .facility-info-title {
+      font-weight: 600;
+      margin-bottom: 10px;
+      color: #2c3e50;
+      font-size: 1.05em;
+    }
+
+    .facility-info-detail {
+      font-size: 0.9em;
+      color: #666;
+      margin-bottom: 5px;
+    }
+
+    .facilities-list {
+      margin-top: 25px;
+    }
+
+    .facilities-category {
+      margin-bottom: 20px;
+    }
+
+    .facilities-category-header {
+      font-weight: 600;
+      margin-bottom: 10px;
+      color: #2c3e50;
+      font-size: 1.05em;
+      padding-bottom: 8px;
+      border-bottom: 2px solid #e0e6ed;
+    }
+
+    .facility-item {
+      padding: 10px;
+      margin-bottom: 8px;
+      background: white;
+      border-radius: 8px;
+      border-left: 3px solid #667eea;
+      font-size: 0.9em;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+    }
+
+    .facility-item:hover {
+      background: #f8f9fa;
+      transform: translateX(2px);
+    }
+
+    .facility-item-name {
+      font-weight: 600;
+      color: #2c3e50;
+      margin-bottom: 3px;
+    }
+
+    .facility-item-address {
+      color: #666;
+      font-size: 0.85em;
+      margin-bottom: 3px;
+    }
+
+    .facility-item-distance {
+      color: #667eea;
+      font-size: 0.85em;
+      font-weight: 500;
+    }
+
     @media (max-width: 1024px) {
       .content-grid {
         grid-template-columns: 1fr;
@@ -271,8 +343,16 @@
         <span>학교 (SC4)</span>
       </div>
       <div class="legend-item">
+        <div class="legend-color" style="background: #f39c12;"></div>
+        <span>편의점 (CS2)</span>
+      </div>
+      <div class="legend-item">
+        <div class="legend-color" style="background: #9b59b6;"></div>
+        <span>지하철역 (SW8)</span>
+      </div>
+      <div class="legend-item">
         <div class="legend-color" style="background: #e67e22;"></div>
-        <span>공장 (FD6)</span>
+        <span>카페 (CE7)</span>
       </div>
     </div>
   </div>
@@ -281,18 +361,24 @@
     let map;
     let markers = [];
     let geocoder;
+    let infowindow;
+    let searchCircle;
 
     // 마커 색상 정의
     const categoryColors = {
       'HP8': '#3498db',  // 병원 - 파랑
       'SC4': '#2ecc71',  // 학교 - 초록
-      'FD6': '#e67e22'   // 공장 - 주황
+      'CS2': '#f39c12',  // 편의점 - 노랑
+      'SW8': '#9b59b6',  // 지하철역 - 보라
+      'CE7': '#e67e22'   // 카페 - 주황
     };
 
     const categoryNames = {
       'HP8': '병원',
       'SC4': '학교',
-      'FD6': '공장'
+      'CS2': '편의점',
+      'SW8': '지하철역',
+      'CE7': '카페'
     };
 
     // 주소 검색 및 분석
@@ -331,27 +417,58 @@
     function displayResults(data) {
       const resultsDiv = document.getElementById('results');
 
-      const convenientScore = data.analysis?.convenience || 0;
-      const riskScore = data.analysis?.risk || 0;
-      const totalScore = convenientScore - riskScore;
+      const totalScore = data.analysis?.total_score || 0;
+      const grade = data.analysis?.grade || '-';
 
       let html = `
         <div class="score-card">
           <div class="score-label">종합 점수</div>
-          <div class="score-value">${totalScore}</div>
+          <div class="score-value">${totalScore}점</div>
+          <div class="score-label" style="font-size: 1.5em; margin-top: 10px;">${grade} 등급</div>
           <div class="score-label">${data.analysis?.recommend || '분석 완료'}</div>
         </div>
 
-        <h3 style="margin-bottom: 15px; color: #2c3e50;">📊 상세 분석</h3>
+        <h3 style="margin-bottom: 15px; color: #2c3e50;">📊 카테고리별 점수</h3>
+        <div style="margin-bottom: 20px;">
+          <div class="category-item">
+            <div class="category-header">
+              <span class="category-name">🏠 생활편의 (의료·교육·편의점)</span>
+              <span class="category-count">${(data.analysis?.living || 0).toFixed(1)}점</span>
+            </div>
+          </div>
+          <div class="category-item">
+            <div class="category-header">
+              <span class="category-name">🚇 교통접근성 (지하철역)</span>
+              <span class="category-count">${(data.analysis?.transportation || 0).toFixed(1)}점</span>
+            </div>
+          </div>
+          <div class="category-item">
+            <div class="category-header">
+              <span class="category-name">☕ 여가문화 (카페)</span>
+              <span class="category-count">${(data.analysis?.leisure || 0).toFixed(1)}점</span>
+            </div>
+          </div>
+        </div>
+
+        <h3 style="margin-bottom: 15px; color: #2c3e50;">📍 주변 시설 개수</h3>
       `;
 
-      if (data.details) {
-        Object.entries(data.details).forEach(([category, count]) => {
-          const displayName = categoryNames[category] || category;
+      if (data.details?.counts) {
+        const counts = data.details.counts;
+        const categoryMapping = {
+          medical: '병원',
+          schools: '학교',
+          convenience_stores: '편의점',
+          subway_stations: '지하철역',
+          cafes: '카페'
+        };
+
+        Object.entries(categoryMapping).forEach(([key, name]) => {
+          const count = counts[key] || 0;
           html += `
             <div class="category-item">
               <div class="category-header">
-                <span class="category-name">${displayName}</span>
+                <span class="category-name">${name}</span>
                 <span class="category-count">${count}개</span>
               </div>
             </div>
@@ -366,7 +483,93 @@
         </div>
       `;
 
+      // 카테고리별 상세 시설 목록 추가
+      html += buildFacilitiesList(data.poi_list);
+
       resultsDiv.innerHTML = html;
+    }
+
+    // 카테고리별 시설 목록 생성
+    function buildFacilitiesList(poiList) {
+      if (!poiList || poiList.length === 0) {
+        return '';
+      }
+
+      // 카테고리별로 POI 그룹화
+      const groupedPois = {
+        'HP8': { name: '🏥 병원', items: [], color: '#3498db' },
+        'SC4': { name: '🏫 학교', items: [], color: '#2ecc71' },
+        'CS2': { name: '🏪 편의점', items: [], color: '#f39c12' },
+        'SW8': { name: '🚇 지하철역', items: [], color: '#9b59b6' },
+        'CE7': { name: '☕ 카페', items: [], color: '#e67e22' }
+      };
+
+      poiList.forEach(poi => {
+        if (groupedPois[poi.category_group_code]) {
+          groupedPois[poi.category_group_code].items.push(poi);
+        }
+      });
+
+      let html = '<div class="facilities-list"><h3 style="margin-bottom: 15px; color: #2c3e50;">📋 시설 상세 목록</h3>';
+
+      Object.entries(groupedPois).forEach(([code, category]) => {
+        if (category.items.length > 0) {
+          // 거리순 정렬
+          category.items.sort((a, b) => (a.distance || 0) - (b.distance || 0));
+
+          html += `
+            <div class="facilities-category">
+              <div class="facilities-category-header">${category.name} (${category.items.length}개)</div>
+          `;
+
+          category.items.forEach(poi => {
+            html += `
+              <div class="facility-item" style="border-left-color: ${category.color};" onclick="focusFacility(${poi.y}, ${poi.x}, '${poi.name?.replace(/'/g, "\\'")}', '${category.name}', '${category.color}')">
+                <div class="facility-item-name">${poi.name || '이름 없음'}</div>
+                <div class="facility-item-address">📍 ${poi.address || '주소 정보 없음'}</div>
+                <div class="facility-item-distance">🚶 ${poi.distance ? poi.distance + 'm' : '거리 정보 없음'}</div>
+              </div>
+            `;
+          });
+
+          html += '</div>';
+        }
+      });
+
+      html += '</div>';
+      return html;
+    }
+
+    // 시설 클릭 시 지도에서 해당 위치로 이동
+    function focusFacility(lat, lng, name, category, color) {
+      const position = new kakao.maps.LatLng(lat, lng);
+      map.setCenter(position);
+      map.setLevel(3);
+
+      // 인포윈도우 표시
+      if (infowindow) {
+        infowindow.close();
+      }
+
+      const infoContent = `
+        <div style="padding: 10px; min-width: 200px;">
+          <div style="font-weight: 600; margin-bottom: 5px; color: #2c3e50;">
+            ${name}
+          </div>
+          <div style="font-size: 0.85em; color: ${color}; font-weight: 500;">
+            ${category}
+          </div>
+        </div>
+      `;
+
+      infowindow = new kakao.maps.InfoWindow({
+        content: infoContent,
+        removable: true
+      });
+
+      infowindow.open(map, new kakao.maps.Marker({
+        position: position
+      }));
     }
 
     // 지도에 마커 표시
@@ -378,6 +581,24 @@
       // 지도 중심 이동
       map.setCenter(position);
       map.setLevel(4);
+
+      // 검색 반경 원 표시 (1km)
+      if (searchCircle) {
+        searchCircle.setMap(null);
+      }
+
+      searchCircle = new kakao.maps.Circle({
+        center: position,
+        radius: 1000, // 미터 단위 (1km)
+        strokeWeight: 2,
+        strokeColor: '#667eea',
+        strokeOpacity: 0.8,
+        strokeStyle: 'solid',
+        fillColor: '#667eea',
+        fillOpacity: 0.1
+      });
+
+      searchCircle.setMap(map);
 
       // 검색 위치 마커 (빨강)
       const mainMarker = new kakao.maps.Marker({
@@ -396,29 +617,114 @@
 
       markers.push(mainMarker);
 
-      // POI 마커 추가 (임시 - 실제로는 서버에서 POI 좌표를 받아와야 함)
-      // 현재는 랜덤 위치에 표시
+      // POI 마커 추가
       if (data.poi_list) {
         data.poi_list.forEach(poi => {
           if (poi.x && poi.y) {
             const poiPosition = new kakao.maps.LatLng(poi.y, poi.x);
             const color = categoryColors[poi.category_group_code] || '#95a5a6';
 
-            const content = `<div style="background: ${color}; width: 8px; height: 8px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 3px rgba(0,0,0,0.3);"></div>`;
+            // 커스텀 오버레이용 DOM 요소 생성
+            const markerDiv = document.createElement('div');
+            markerDiv.style.cssText = `background: ${color}; width: 8px; height: 8px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 3px rgba(0,0,0,0.3); cursor: pointer;`;
+
             const customOverlay = new kakao.maps.CustomOverlay({
               position: poiPosition,
-              content: content
+              content: markerDiv,
+              clickable: true
             });
             customOverlay.setMap(map);
+
+            // 클릭 이벤트 추가
+            markerDiv.addEventListener('click', function() {
+              // 기존 인포윈도우가 있으면 닫기
+              if (infowindow) {
+                infowindow.close();
+              }
+
+              // 새 인포윈도우 생성
+              const categoryName = categoryNames[poi.category_group_code] || '기타';
+              const infoContent = `
+                <div style="padding: 10px; min-width: 200px;">
+                  <div style="font-weight: 600; margin-bottom: 5px; color: #2c3e50;">
+                    ${poi.name || '이름 없음'}
+                  </div>
+                  <div style="font-size: 0.85em; color: #666; margin-bottom: 3px;">
+                    📍 ${poi.address || '주소 정보 없음'}
+                  </div>
+                  <div style="font-size: 0.85em; color: ${color}; font-weight: 500;">
+                    ${categoryName}
+                  </div>
+                </div>
+              `;
+
+              infowindow = new kakao.maps.InfoWindow({
+                content: infoContent,
+                removable: true
+              });
+
+              infowindow.open(map, new kakao.maps.Marker({
+                position: poiPosition
+              }));
+
+              // 오른쪽 패널에 시설 정보 표시
+              displayFacilityInfo(poi, categoryName, color);
+            });
           }
         });
       }
+    }
+
+    // 시설 정보 표시
+    function displayFacilityInfo(poi, categoryName, color) {
+      // 기존 시설 정보 제거
+      const existingInfo = document.getElementById('facility-info-section');
+      if (existingInfo) {
+        existingInfo.remove();
+      }
+
+      // 새 시설 정보 추가
+      const resultsDiv = document.getElementById('results');
+      const facilityInfoHtml = `
+        <div id="facility-info-section" class="facility-info">
+          <div class="facility-info-title">📍 선택된 시설</div>
+          <div class="facility-info-detail">
+            <strong>상호명:</strong> ${poi.name || '이름 없음'}
+          </div>
+          <div class="facility-info-detail">
+            <strong>주소:</strong> ${poi.address || '주소 정보 없음'}
+          </div>
+          <div class="facility-info-detail">
+            <strong>분류:</strong> <span style="color: ${color}; font-weight: 600;">${categoryName}</span>
+          </div>
+          <div class="facility-info-detail">
+            <strong>거리:</strong> ${poi.distance ? poi.distance + 'm' : '정보 없음'}
+          </div>
+        </div>
+      `;
+
+      resultsDiv.insertAdjacentHTML('beforeend', facilityInfoHtml);
+
+      // 스크롤을 하단으로 이동
+      resultsDiv.scrollTop = resultsDiv.scrollHeight;
     }
 
     // 마커 지우기
     function clearMarkers() {
       markers.forEach(marker => marker.setMap(null));
       markers = [];
+
+      // 검색 반경 원도 제거
+      if (searchCircle) {
+        searchCircle.setMap(null);
+        searchCircle = null;
+      }
+
+      // 시설 정보도 제거
+      const existingInfo = document.getElementById('facility-info-section');
+      if (existingInfo) {
+        existingInfo.remove();
+      }
     }
 
     // 엔터키 이벤트

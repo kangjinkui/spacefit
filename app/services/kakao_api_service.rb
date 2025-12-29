@@ -3,9 +3,11 @@ class KakaoApiService
   base_uri 'https://dapi.kakao.com'
 
   CATEGORIES = {
-    medical: 'HP8',    # 병원
-    school: 'SC4',     # 학교
-    factory: 'FD6'     # 공장
+    medical: 'HP8',       # 병원
+    school: 'SC4',        # 학교
+    convenience: 'CS2',   # 편의점
+    subway: 'SW8',        # 지하철역
+    cafe: 'CE7'           # 카페
   }.freeze
 
   RADIUS = 1000 # 반경 1km (미터)
@@ -15,27 +17,46 @@ class KakaoApiService
     raise 'KAKAO_API_KEY is not set' if @api_key.blank?
   end
 
-  # 주소 → 좌표 변환
+  # 주소 → 좌표 변환 (주소 검색 실패 시 키워드 검색으로 fallback)
   def geocode(address)
+    # 1. 먼저 주소 검색 시도
     response = self.class.get(
       '/v2/local/search/address.json',
       query: { query: address },
       headers: headers
     )
 
-    handle_response(response) do |data|
+    result = handle_response(response) do |data|
+      unless data['documents'].empty?
+        doc = data['documents'].first
+        return {
+          address: doc['address_name'],
+          lat: doc['y'].to_f,
+          lng: doc['x'].to_f
+        }
+      end
+    end
+
+    # 2. 주소 검색 실패 시 키워드 검색 (장소명, POI 이름 등)
+    keyword_response = self.class.get(
+      '/v2/local/search/keyword.json',
+      query: { query: address },
+      headers: headers
+    )
+
+    handle_response(keyword_response) do |data|
       return nil if data['documents'].empty?
 
       doc = data['documents'].first
       {
-        address: doc['address_name'],
+        address: doc['address_name'] || doc['road_address_name'] || doc['place_name'],
         lat: doc['y'].to_f,
         lng: doc['x'].to_f
       }
     end
   end
 
-  # POI 검색 (카테고리별)
+  # POI 검색 (카테고리별) - 상세 정보 포함
   def search_poi(lat, lng, category_code)
     response = self.class.get(
       '/v2/local/search/category.json',
@@ -49,7 +70,15 @@ class KakaoApiService
     )
 
     handle_response(response) do |data|
-      data['documents'].map { |doc| doc['place_name'] }
+      data['documents'].map do |doc|
+        {
+          place_name: doc['place_name'],
+          x: doc['x'],
+          y: doc['y'],
+          distance: doc['distance'],  # 거리(미터)
+          address_name: doc['address_name']
+        }
+      end
     end
   end
 
@@ -58,7 +87,9 @@ class KakaoApiService
     {
       medical: search_poi(lat, lng, CATEGORIES[:medical]),
       schools: search_poi(lat, lng, CATEGORIES[:school]),
-      factories: search_poi(lat, lng, CATEGORIES[:factory])
+      convenience_stores: search_poi(lat, lng, CATEGORIES[:convenience]),
+      subway_stations: search_poi(lat, lng, CATEGORIES[:subway]),
+      cafes: search_poi(lat, lng, CATEGORIES[:cafe])
     }
   end
 

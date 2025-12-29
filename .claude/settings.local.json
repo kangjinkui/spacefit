@@ -15,7 +15,13 @@
       "Bash(git branch:*)",
       "Bash(git remote add:*)",
       "Bash(git push:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(bin\\rails:*)",
+      "Bash(timeout:*)",
+      "Bash(ruby:*)",
+      "Bash(wsl bash -c:*)",
+      "Bash(dir c:UsersuserSpaceFitnul)",
+      "Bash(del \"c:\\Users\\user\\SpaceFit\\nul\")"
     ],
     "deny": [],
     "ask": []
