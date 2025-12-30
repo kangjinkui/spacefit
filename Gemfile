@@ -33,7 +33,7 @@ gem "tzinfo-data", platforms: %i[ windows jruby ]
 gem "bootsnap", require: false
 
 # HTTP requests for external APIs
-gem "httparty", "~> 0.22"
+gem "httparty", "~> 0.24"
 
 # Environment variable management
 gem "dotenv-rails", "~> 3.1"
