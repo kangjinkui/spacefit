@@ -20,7 +20,7 @@ class ExcelParser
   #   }
   # ]
   def self.parse(file_path)
-    xlsx = Roo::Spreadsheet.open(file_path)
+    xlsx = Roo::Spreadsheet.open(file_path, extension: :xls)
     sheet = xlsx.sheet(0) # 첫 번째 시트
 
     # 헤더 행 찾기 (보통 첫 번째 행)
