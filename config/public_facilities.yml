@@ -1,0 +1,166 @@
+# 공공시설 용도 순위화 시스템 설정
+# 카카오 로컬 API 18개 카테고리 기반 상위 지표 정의
+
+# 상위 지표 (Indicators)
+indicators:
+  # 상권 활력도 - 상업시설 밀집도
+  commercial_vitality:
+    categories:
+      - FD6  # 음식점
+      - CE7  # 카페
+      - MT1  # 대형마트
+      - CS2  # 편의점
+      - BK9  # 은행
+    weights:
+      FD6: 2.0
+      CE7: 1.5
+      MT1: 1.8
+      CS2: 0.5
+      BK9: 1.0
+
+  # 생활 수요 - 주거 및 생활 인프라
+  residential_demand:
+    categories:
+      - SC4  # 학교
+      - HP8  # 병원
+      - PS3  # 어린이집, 유치원
+      - PM9  # 약국
+      - AC5  # 학원
+    weights:
+      SC4: 2.0
+      HP8: 2.5
+      PS3: 1.5
+      PM9: 1.2
+      AC5: 0.8
+
+  # 교통 접근성 - 대중교통 및 주차
+  transportation:
+    categories:
+      - SW8  # 지하철역
+      - PK6  # 주차장
+      - OL7  # 주유소, 충전소
+    weights:
+      SW8: 3.0
+      PK6: 0.8
+      OL7: 0.5
+
+  # 문화/공공 - 문화·관광·공공시설
+  culture_public:
+    categories:
+      - CT1  # 문화시설
+      - PO3  # 공공기관
+      - AT4  # 관광명소
+      - AD5  # 숙박
+    weights:
+      CT1: 2.0
+      PO3: 1.5
+      AT4: 1.0
+      AD5: 0.5
+
+# 공공시설 유형별 적합도 규칙
+facility_rules:
+  주민센터:
+    description: "주민 행정 서비스 제공 시설"
+    indicator_weights:
+      transportation: 0.35      # 교통 접근성 중요
+      residential_demand: 0.40  # 주거 밀도 중요
+      culture_public: 0.15      # 기존 공공시설 고려
+      commercial_vitality: 0.10
+    penalty_category: PO3       # 이미 공공기관 많으면 감점
+    penalty_weight: 0.2
+
+  도서관:
+    description: "지역 문화 및 교육 시설"
+    indicator_weights:
+      residential_demand: 0.45  # 학교·주거 밀집 선호
+      culture_public: 0.30      # 문화시설 접근성
+      transportation: 0.20      # 교통 편의
+      commercial_vitality: 0.05 # 조용한 환경 선호 (낮은 가중치)
+    penalty_category: CT1
+    penalty_weight: 0.15
+
+  어린이집:
+    description: "영유아 보육 시설"
+    indicator_weights:
+      residential_demand: 0.60  # 주거지 중심 필수
+      transportation: 0.25      # 주차·접근성 중요
+      commercial_vitality: 0.10
+      culture_public: 0.05
+    penalty_category: PS3       # 기존 어린이집 많으면 감점
+    penalty_weight: 0.3
+
+  체육시설:
+    description: "주민 체육 및 건강 증진 시설"
+    indicator_weights:
+      residential_demand: 0.40
+      transportation: 0.30
+      culture_public: 0.20      # 공원·관광지 인근 선호
+      commercial_vitality: 0.10
+    penalty_category: CT1       # 문화시설(체육시설 포함)
+    penalty_weight: 0.15
+
+  경로당:
+    description: "노인 여가 및 복지 시설"
+    indicator_weights:
+      residential_demand: 0.50  # 주거 밀집 중요
+      transportation: 0.20      # 보행 접근성
+      commercial_vitality: 0.15 # 편의시설 근접
+      culture_public: 0.15
+    penalty_category: PO3
+    penalty_weight: 0.2
+
+  주차장:
+    description: "공영 주차 시설"
+    indicator_weights:
+      commercial_vitality: 0.45 # 상권 중심 필요
+      transportation: 0.30      # 교통 요충지
+      residential_demand: 0.20
+      culture_public: 0.05
+    penalty_category: PK6       # 기존 주차장 많으면 감점
+    penalty_weight: 0.35
+
+  공원:
+    description: "도시 녹지 및 휴식 공간"
+    indicator_weights:
+      residential_demand: 0.45  # 주거지 인근
+      culture_public: 0.25      # 관광·문화 연계
+      commercial_vitality: 0.20
+      transportation: 0.10
+    penalty_category: AT4       # 관광명소(공원 포함)
+    penalty_weight: 0.2
+
+  복지관:
+    description: "종합 사회 복지 서비스 시설"
+    indicator_weights:
+      residential_demand: 0.45
+      transportation: 0.30
+      culture_public: 0.15
+      commercial_vitality: 0.10
+    penalty_category: PO3
+    penalty_weight: 0.2
+
+  청소년수련관:
+    description: "청소년 교육 및 활동 시설"
+    indicator_weights:
+      residential_demand: 0.50  # 학교 인근
+      culture_public: 0.25
+      transportation: 0.20
+      commercial_vitality: 0.05
+    penalty_category: CT1
+    penalty_weight: 0.15
+
+  보건소:
+    description: "지역 보건 의료 시설"
+    indicator_weights:
+      residential_demand: 0.50  # 병원 인근 보완
+      transportation: 0.30
+      commercial_vitality: 0.10
+      culture_public: 0.10
+    penalty_category: HP8       # 병원 많으면 소폭 감점
+    penalty_weight: 0.1
+
+# 점수 정규화 설정
+scoring:
+  max_possible_score: 50.0      # 예상 최대 원점수 (튜닝 필요)
+  min_threshold: 20.0           # 추천 최소 점수
+  top_n_recommendations: 5      # 상위 N개 추천

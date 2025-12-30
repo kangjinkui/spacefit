@@ -96,7 +96,7 @@
 
     .content-grid {
       display: grid;
-      grid-template-columns: 1fr 400px;
+      grid-template-columns: 1fr 350px;
       gap: 20px;
       margin-bottom: 20px;
     }
@@ -120,6 +120,27 @@
       box-shadow: 0 2px 20px rgba(0,0,0,0.08);
       max-height: 600px;
       overflow-y: auto;
+    }
+
+    .report-section {
+      margin-top: 40px;
+      margin-bottom: 40px;
+      width: 100%;
+    }
+
+    .report-container {
+      background: white;
+      border-radius: 15px;
+      padding: 40px;
+      box-shadow: 0 4px 25px rgba(0,0,0,0.1);
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+
+    .report-section-divider {
+      margin: 30px 0;
+      padding: 15px 0;
+      border-top: 2px dashed #e0e6ed;
     }
 
     .score-card {
@@ -296,6 +317,24 @@
       .results-panel {
         max-height: none;
       }
+
+      .report-container {
+        padding: 25px;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .report-container {
+        padding: 20px;
+      }
+
+      h2 {
+        font-size: 1.5em !important;
+      }
+
+      h3 {
+        font-size: 1.2em !important;
+      }
     }
   </style>
 </head>
@@ -321,11 +360,16 @@
         <div id="map"></div>
       </div>
 
-      <div class="results-panel" id="results">
+      <div class="results-panel" id="results-summary">
         <p style="text-align: center; color: #999; padding: 100px 20px;">
           주소를 입력하고 분석하기 버튼을 눌러주세요
         </p>
       </div>
+    </div>
+
+    <!-- 상세 보고서 섹션 (하단 배치) -->
+    <div class="report-section" id="report-section" style="display: none;">
+      <div class="report-container" id="detailed-report"></div>
     </div>
 
     <div class="marker-legend">
@@ -407,15 +451,17 @@
 
         displayResults(data);
         displayOnMap(data);
+        displayDetailedReport(data);
       } catch (error) {
         errorDiv.innerHTML = `<div class="error">❌ ${error.message}</div>`;
-        resultsDiv.innerHTML = '<p style="text-align: center; color: #999;">분석 결과가 없습니다.</p>';
+        document.getElementById('results-summary').innerHTML = '<p style="text-align: center; color: #999;">분석 결과가 없습니다.</p>';
+        document.getElementById('report-section').style.display = 'none';
       }
     }
 
-    // 결과 표시
+    // 요약 결과 표시 (오른쪽 패널)
     function displayResults(data) {
-      const resultsDiv = document.getElementById('results');
+      const resultsDiv = document.getElementById('results-summary');
 
       const totalScore = data.analysis?.total_score || 0;
       const grade = data.analysis?.grade || '-';
@@ -483,10 +529,107 @@
         </div>
       `;
 
-      // 카테고리별 상세 시설 목록 추가
-      html += buildFacilitiesList(data.poi_list);
+      // 상위 지표 표시 (신규)
+      if (data.area_indicators) {
+        html += buildAreaIndicators(data.area_indicators);
+      }
+
+      // 공공시설 추천 요약 (상위 3개만)
+      if (data.recommended_public_facilities) {
+        html += buildPublicFacilityRecommendationsSummary(data.recommended_public_facilities);
+      }
 
       resultsDiv.innerHTML = html;
+    }
+
+    // 상세 보고서 표시 (하단 섹션)
+    function displayDetailedReport(data) {
+      const reportSection = document.getElementById('report-section');
+      const reportContainer = document.getElementById('detailed-report');
+
+      if (!data.facility_report) {
+        reportSection.style.display = 'none';
+        return;
+      }
+
+      reportSection.style.display = 'block';
+      reportContainer.innerHTML = buildDetailedReport(data.facility_report, data.poi_list);
+
+      // 보고서 섹션으로 스크롤 (부드럽게)
+      setTimeout(() => {
+        reportSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+    }
+
+    // 상위 지표 표시 (신규)
+    function buildAreaIndicators(indicators) {
+      const indicatorLabels = {
+        commercial_vitality: '🏪 상권 활력도',
+        residential_demand: '🏠 주거 수요',
+        transportation: '🚇 교통 접근성',
+        culture_public: '🎭 문화/공공시설'
+      };
+
+      let html = '<div style="margin-top: 25px;"><h3 style="margin-bottom: 15px; color: #2c3e50;">📈 지역 특성 분석</h3>';
+
+      Object.entries(indicators).forEach(([key, score]) => {
+        const label = indicatorLabels[key] || key;
+        const scoreColor = score >= 70 ? '#2ecc71' : score >= 50 ? '#f39c12' : '#e74c3c';
+        const scoreLabel = score >= 70 ? '우수' : score >= 50 ? '양호' : '보통';
+
+        html += `
+          <div class="category-item" style="border-left-color: ${scoreColor};">
+            <div class="category-header">
+              <span class="category-name">${label}</span>
+              <span class="category-count" style="background: ${scoreColor};">${score}점 (${scoreLabel})</span>
+            </div>
+          </div>
+        `;
+      });
+
+      html += '</div>';
+      return html;
+    }
+
+    // 공공시설 추천 요약 (상위 3개만, 오른쪽 패널용)
+    function buildPublicFacilityRecommendationsSummary(recommendations) {
+      if (!recommendations || recommendations.length === 0) {
+        return '';
+      }
+
+      let html = '<div style="margin-top: 25px;"><h3 style="margin-bottom: 15px; color: #2c3e50;">🏗️ 추천 공공시설 TOP 3</h3>';
+
+      const top3 = recommendations.slice(0, 3);
+
+      top3.forEach((rec, index) => {
+        const rankColor = index === 0 ? '#FFD700' : index === 1 ? '#C0C0C0' : '#CD7F32';
+        const rankEmoji = index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉';
+
+        html += `
+          <div class="category-item" style="border-left: 4px solid ${rankColor}; background: #fffbf0;">
+            <div style="margin-bottom: 6px;">
+              <span style="font-size: 1.2em; font-weight: 700; color: ${rankColor};">${rankEmoji}</span>
+              <span style="font-size: 1em; font-weight: 700; color: #2c3e50; margin-left: 8px;">${rec.facility_type}</span>
+              <span style="float: right; background: ${rankColor}; color: white; padding: 3px 10px; border-radius: 15px; font-size: 0.85em; font-weight: 600;">
+                ${rec.score.toFixed(1)}점
+              </span>
+            </div>
+            <div style="font-size: 0.8em; color: #666;">
+              ${rec.description || ''}
+            </div>
+          </div>
+        `;
+      });
+
+      html += `
+        <div style="margin-top: 15px; text-align: center; padding: 12px; background: #f0f4ff; border-radius: 8px;">
+          <span style="color: #667eea; font-weight: 600; cursor: pointer;" onclick="document.getElementById('report-section').scrollIntoView({ behavior: 'smooth' });">
+            📊 상세 분석 보고서 보기 ↓
+          </span>
+        </div>
+      </div>`;
+
+      return html;
     }
 
     // 카테고리별 시설 목록 생성
@@ -538,6 +681,371 @@
 
       html += '</div>';
       return html;
+    }
+
+    // 상세 보고서 UI (하단 섹션용)
+    function buildDetailedReport(report, poiList) {
+      if (!report) return '';
+
+      let html = `
+        <div style="text-align: center; margin-bottom: 40px;">
+          <h2 style="color: #2c3e50; font-size: 2em; margin-bottom: 10px;">
+            📊 공공시설 추천 상세 분석 보고서
+          </h2>
+          <p style="color: #666; font-size: 1.05em;">종합적인 데이터 기반 의사결정 지원 리포트</p>
+          <div style="margin-top: 20px; height: 3px; background: linear-gradient(90deg, transparent, #667eea, transparent); border-radius: 2px;"></div>
+        </div>
+
+        <!-- 1. 요약 -->
+        ${buildReportSummary(report.summary)}
+
+        <div class="report-section-divider"></div>
+
+        <!-- 2. 시설별 상세 분석 -->
+        ${buildRecommendationDetails(report.detailed_recommendations)}
+
+        <div class="report-section-divider"></div>
+
+        <!-- 3. 지역 특성 분석 -->
+        ${buildAreaAnalysis(report.area_analysis)}
+
+        <div class="report-section-divider"></div>
+
+        <!-- 4. 점수 분해 분석 -->
+        ${buildScoringBreakdown(report.scoring_breakdown)}
+
+        <div class="report-section-divider"></div>
+
+        <!-- 5. 비교 분석 -->
+        ${buildComparativeAnalysis(report.comparative_analysis)}
+
+        <div class="report-section-divider"></div>
+
+        <!-- 6. 결론 및 제안 -->
+        ${buildConclusion(report.conclusion)}
+
+        <div class="report-section-divider"></div>
+
+        <!-- 7. 시설 상세 목록 -->
+        ${buildFacilitiesList(poiList)}
+      `;
+
+      return html;
+    }
+
+    // 요약 섹션
+    function buildReportSummary(summary) {
+      if (!summary) return '';
+
+      return `
+        <div style="margin-bottom: 25px; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px; color: white;">
+          <h3 style="margin-bottom: 15px; color: white;">📍 분석 요약</h3>
+          <div style="font-size: 0.95em; line-height: 1.8;">
+            <strong>분석 위치:</strong> ${summary.location || '정보 없음'}<br>
+            <strong>분석 일시:</strong> ${summary.analysis_date || '정보 없음'}<br>
+            <strong>최우선 추천:</strong> ${summary.top_recommendation?.description || '정보 없음'} (${summary.top_recommendation?.score || 0}점)<br>
+            <strong>지역 특성:</strong> ${summary.strongest_characteristic?.indicator || '정보 없음'} ${summary.strongest_characteristic?.score || 0}점
+          </div>
+        </div>
+      `;
+    }
+
+    // 시설별 상세 분석
+    function buildRecommendationDetails(details) {
+      if (!details || details.length === 0) return '';
+
+      let html = `
+        <div style="margin-bottom: 25px;">
+          <h3 style="margin-bottom: 15px; color: #2c3e50; border-left: 4px solid #667eea; padding-left: 10px;">
+            🏗️ 시설별 상세 분석
+          </h3>
+      `;
+
+      details.forEach((rec, index) => {
+        const rankEmoji = index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `${rec.rank}위`;
+        const gradeColor = rec.grade === 'S' || rec.grade === 'A+' ? '#2ecc71' :
+                          rec.grade === 'A' || rec.grade === 'B+' ? '#f39c12' : '#e74c3c';
+
+        html += `
+          <div style="margin-bottom: 20px; padding: 18px; background: #f8f9fa; border-radius: 10px; border-left: 4px solid ${gradeColor};">
+            <div style="margin-bottom: 12px;">
+              <span style="font-size: 1.2em;">${rankEmoji}</span>
+              <span style="font-size: 1.15em; font-weight: 700; color: #2c3e50; margin-left: 8px;">${rec.description}</span>
+              <span style="float: right; background: ${gradeColor}; color: white; padding: 5px 15px; border-radius: 20px; font-weight: 600;">
+                ${rec.overall_score}점 (${rec.grade})
+              </span>
+            </div>
+
+            <!-- 점수 계산 과정 -->
+            ${buildScoringDetail(rec.scoring_detail)}
+
+            <!-- 입지 분석 -->
+            ${buildLocationAnalysis(rec.location_analysis)}
+
+            <!-- 실행 가능성 -->
+            ${buildFeasibility(rec.feasibility)}
+          </div>
+        `;
+      });
+
+      html += '</div>';
+      return html;
+    }
+
+    // 점수 계산 상세
+    function buildScoringDetail(scoring) {
+      if (!scoring) return '';
+
+      let html = `
+        <div style="margin-top: 12px; padding: 12px; background: white; border-radius: 8px;">
+          <div style="font-weight: 600; margin-bottom: 8px; color: #555;">📊 점수 계산 과정</div>
+          <div style="font-size: 0.9em; color: #666; line-height: 1.6;">
+            • 기본 점수: ${scoring.base_score}점<br>
+      `;
+
+      if (scoring.indicator_contributions && scoring.indicator_contributions.length > 0) {
+        html += '<div style="margin-top: 8px; margin-left: 10px;">';
+        scoring.indicator_contributions.forEach(contrib => {
+          html += `
+            <div style="margin-bottom: 4px;">
+              ▸ ${contrib.indicator}: ${contrib.raw_score}점 × ${contrib.weight} = ${contrib.contribution}점 (${contrib.percentage}%)
+            </div>
+          `;
+        });
+        html += '</div>';
+      }
+
+      if (scoring.penalties && scoring.penalties.details && scoring.penalties.details.length > 0) {
+        html += '<div style="margin-top: 8px; color: #e74c3c;">• 감점 요인:</div>';
+        html += '<div style="margin-left: 10px; color: #e74c3c;">';
+        scoring.penalties.details.forEach(penalty => {
+          html += `
+            <div style="margin-bottom: 4px;">
+              ▸ ${penalty.type}: ${penalty.reason} (-${penalty.penalty_percentage}%, 영향도: ${penalty.impact})
+            </div>
+          `;
+        });
+        html += `<div style="margin-top: 4px; font-weight: 600;">총 감점: -${scoring.penalties.total_penalty_percentage}%</div>`;
+        html += '</div>';
+      }
+
+      html += `
+            • <strong>최종 점수: ${scoring.final_score}점</strong>
+          </div>
+        </div>
+      `;
+
+      return html;
+    }
+
+    // 입지 분석
+    function buildLocationAnalysis(analysis) {
+      if (!analysis) return '';
+
+      return `
+        <div style="margin-top: 12px; padding: 12px; background: white; border-radius: 8px;">
+          <div style="font-weight: 600; margin-bottom: 8px; color: #555;">📍 입지 적합성 분석</div>
+          <div style="font-size: 0.9em; color: #666; line-height: 1.6;">
+            <div style="margin-bottom: 8px;"><strong>종합 평가:</strong> ${analysis.overall_suitability}</div>
+            ${analysis.strengths && analysis.strengths.length > 0 ? `
+              <div style="color: #2ecc71; margin-bottom: 6px;">
+                <strong>✓ 강점:</strong><br>
+                ${analysis.strengths.map(s => `  • ${s}`).join('<br>')}
+              </div>
+            ` : ''}
+            ${analysis.weaknesses && analysis.weaknesses.length > 0 ? `
+              <div style="color: #e74c3c; margin-bottom: 6px;">
+                <strong>✗ 약점:</strong><br>
+                ${analysis.weaknesses.map(w => `  • ${w}`).join('<br>')}
+              </div>
+            ` : ''}
+            ${analysis.competition && analysis.competition.length > 0 ? `
+              <div style="color: #f39c12;">
+                <strong>⚠ 경쟁 시설:</strong> ${analysis.competition.join(', ')}
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      `;
+    }
+
+    // 실행 가능성
+    function buildFeasibility(feasibility) {
+      if (!feasibility) return '';
+
+      const levelColor = feasibility.level === '높음' ? '#2ecc71' :
+                        feasibility.level === '중간' ? '#f39c12' : '#e74c3c';
+
+      return `
+        <div style="margin-top: 12px; padding: 12px; background: white; border-radius: 8px;">
+          <div style="font-weight: 600; margin-bottom: 8px; color: #555;">🎯 실행 가능성</div>
+          <div style="font-size: 0.9em; color: #666; line-height: 1.6;">
+            • <strong>가능성 수준:</strong> <span style="color: ${levelColor}; font-weight: 600;">${feasibility.level}</span> (${feasibility.score}점)<br>
+            • <strong>기존 시설 영향:</strong> ${feasibility.existing_facilities_impact}<br>
+            • <strong>권장사항:</strong> ${feasibility.recommendation}
+          </div>
+        </div>
+      `;
+    }
+
+    // 지역 특성 분석
+    function buildAreaAnalysis(analysis) {
+      if (!analysis) return '';
+
+      return `
+        <div style="margin-bottom: 25px; padding: 18px; background: #f0f4ff; border-radius: 10px;">
+          <h3 style="margin-bottom: 15px; color: #2c3e50; border-left: 4px solid #667eea; padding-left: 10px;">
+            🌍 지역 특성 종합 분석
+          </h3>
+          <div style="font-size: 0.95em; line-height: 1.8; color: #555;">
+            <strong>지역 유형:</strong> ${analysis.location_type || '정보 없음'}<br>
+            <strong>개발 잠재력:</strong> ${analysis.development_potential?.level || '정보 없음'} (${analysis.development_potential?.score || 0}점)
+            <div style="margin-top: 5px; font-size: 0.9em; color: #666;">
+              ${analysis.development_potential?.reasoning || ''}
+            </div>
+          </div>
+
+          ${analysis.poi_distribution ? `
+            <div style="margin-top: 15px; padding: 12px; background: white; border-radius: 8px;">
+              <div style="font-weight: 600; margin-bottom: 8px;">📍 POI 분포</div>
+              <div style="font-size: 0.9em; color: #666;">
+                총 ${analysis.poi_distribution.total_count}개 (밀집도: ${analysis.poi_distribution.density})
+              </div>
+            </div>
+          ` : ''}
+
+          ${analysis.existing_facilities_status && analysis.existing_facilities_status.total_count ? `
+            <div style="margin-top: 15px; padding: 12px; background: white; border-radius: 8px;">
+              <div style="font-weight: 600; margin-bottom: 8px;">🏗️ 기존 시설 현황</div>
+              <div style="font-size: 0.9em; color: #666;">
+                총 ${analysis.existing_facilities_status.total_count}개 시설
+                (포화도: ${analysis.existing_facilities_status.saturation_level})
+              </div>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }
+
+    // 점수 분해 분석
+    function buildScoringBreakdown(breakdown) {
+      if (!breakdown) return '';
+
+      return `
+        <div style="margin-bottom: 25px; padding: 18px; background: #fff8f0; border-radius: 10px;">
+          <h3 style="margin-bottom: 15px; color: #2c3e50; border-left: 4px solid #f39c12; padding-left: 10px;">
+            📈 점수 분포 분석
+          </h3>
+
+          ${breakdown.top_3_comparison ? `
+            <div style="margin-bottom: 15px;">
+              <div style="font-weight: 600; margin-bottom: 8px; color: #555;">상위 3개 시설 비교</div>
+              ${breakdown.top_3_comparison.map((item, idx) => `
+                <div style="margin-bottom: 6px; font-size: 0.9em; color: #666;">
+                  ${idx + 1}위. ${item.facility_type}: ${item.score}점
+                  ${item.score_difference_from_top > 0 ? `(-${item.score_difference_from_top}점)` : ''}
+                </div>
+              `).join('')}
+            </div>
+          ` : ''}
+
+          ${breakdown.score_distribution ? `
+            <div style="padding: 12px; background: white; border-radius: 8px;">
+              <div style="font-weight: 600; margin-bottom: 8px; color: #555;">점수 분포</div>
+              <div style="font-size: 0.9em; color: #666;">
+                • 우수 (80점 이상): ${breakdown.score_distribution.excellent}개<br>
+                • 양호 (60-79점): ${breakdown.score_distribution.good}개<br>
+                • 보통 (40-59점): ${breakdown.score_distribution.fair}개<br>
+                • 미흡 (40점 미만): ${breakdown.score_distribution.poor}개
+              </div>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }
+
+    // 비교 분석
+    function buildComparativeAnalysis(analysis) {
+      if (!analysis) return '';
+
+      return `
+        <div style="margin-bottom: 25px; padding: 18px; background: #f0fff4; border-radius: 10px;">
+          <h3 style="margin-bottom: 15px; color: #2c3e50; border-left: 4px solid #2ecc71; padding-left: 10px;">
+            ⚖️ 비교 분석
+          </h3>
+
+          ${analysis.top_vs_bottom ? `
+            <div style="margin-bottom: 15px; padding: 12px; background: white; border-radius: 8px;">
+              <div style="font-weight: 600; margin-bottom: 8px; color: #555;">1위 vs 최하위</div>
+              <div style="font-size: 0.9em; color: #666; line-height: 1.6;">
+                • 1위: ${analysis.top_vs_bottom.top_facility?.type} (${analysis.top_vs_bottom.top_facility?.score}점)<br>
+                • 최하위: ${analysis.top_vs_bottom.bottom_facility?.type} (${analysis.top_vs_bottom.bottom_facility?.score}점)<br>
+                • 점수 격차: ${analysis.top_vs_bottom.score_gap}점<br>
+                • <strong>${analysis.top_vs_bottom.interpretation}</strong>
+              </div>
+            </div>
+          ` : ''}
+
+          ${analysis.competitiveness ? `
+            <div style="padding: 12px; background: white; border-radius: 8px;">
+              <div style="font-weight: 600; margin-bottom: 8px; color: #555;">경쟁도 분석</div>
+              <div style="font-size: 0.9em; color: #666;">
+                평균 점수: ${analysis.competitiveness.average_score}점
+                (${analysis.competitiveness.competitiveness})
+              </div>
+            </div>
+          ` : ''}
+        </div>
+      `;
+    }
+
+    // 결론 및 제안
+    function buildConclusion(conclusion) {
+      if (!conclusion) return '';
+
+      return `
+        <div style="padding: 20px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border-radius: 10px; color: white;">
+          <h3 style="margin-bottom: 15px; color: white;">💡 결론 및 제안</h3>
+
+          <div style="margin-bottom: 15px; padding: 15px; background: rgba(255,255,255,0.2); border-radius: 8px;">
+            <div style="font-weight: 600; margin-bottom: 8px;">🎯 최우선 추천</div>
+            <div style="font-size: 0.95em; line-height: 1.6;">
+              <strong>${conclusion.primary_recommendation?.facility}</strong><br>
+              ${conclusion.primary_recommendation?.reason}
+            </div>
+          </div>
+
+          ${conclusion.alternative_options && conclusion.alternative_options.length > 0 ? `
+            <div style="margin-bottom: 15px; padding: 15px; background: rgba(255,255,255,0.2); border-radius: 8px;">
+              <div style="font-weight: 600; margin-bottom: 8px;">🔄 대안 옵션</div>
+              ${conclusion.alternative_options.map((opt, idx) => `
+                <div style="font-size: 0.9em; margin-bottom: 6px;">
+                  ${idx + 2}순위. ${opt.facility}<br>
+                  <span style="font-size: 0.85em; opacity: 0.9;">${opt.reason}</span>
+                </div>
+              `).join('')}
+            </div>
+          ` : ''}
+
+          ${conclusion.key_considerations && conclusion.key_considerations.length > 0 ? `
+            <div style="margin-bottom: 15px; padding: 15px; background: rgba(255,255,255,0.2); border-radius: 8px;">
+              <div style="font-weight: 600; margin-bottom: 8px;">⚠️ 주요 고려사항</div>
+              ${conclusion.key_considerations.map(item => `
+                <div style="font-size: 0.9em; margin-bottom: 4px;">• ${item}</div>
+              `).join('')}
+            </div>
+          ` : ''}
+
+          ${conclusion.next_steps && conclusion.next_steps.length > 0 ? `
+            <div style="padding: 15px; background: rgba(255,255,255,0.2); border-radius: 8px;">
+              <div style="font-weight: 600; margin-bottom: 8px;">📋 다음 단계</div>
+              ${conclusion.next_steps.map((step, idx) => `
+                <div style="font-size: 0.9em; margin-bottom: 4px;">${idx + 1}. ${step}</div>
+              `).join('')}
+            </div>
+          ` : ''}
+        </div>
+      `;
     }
 
     // 시설 클릭 시 지도에서 해당 위치로 이동

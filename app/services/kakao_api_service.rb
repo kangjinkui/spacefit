@@ -2,12 +2,29 @@ class KakaoApiService
   include HTTParty
   base_uri 'https://dapi.kakao.com'
 
+  # 카카오 로컬 API 전체 카테고리 (18개)
   CATEGORIES = {
-    medical: 'HP8',       # 병원
-    school: 'SC4',        # 학교
-    convenience: 'CS2',   # 편의점
-    subway: 'SW8',        # 지하철역
-    cafe: 'CE7'           # 카페
+    # 기존 5개
+    medical: 'HP8',           # 병원
+    school: 'SC4',            # 학교
+    convenience: 'CS2',       # 편의점
+    subway: 'SW8',            # 지하철역
+    cafe: 'CE7',              # 카페
+
+    # 확장 13개
+    large_mart: 'MT1',        # 대형마트
+    daycare: 'PS3',           # 어린이집, 유치원
+    academy: 'AC5',           # 학원
+    parking: 'PK6',           # 주차장
+    gas_station: 'OL7',       # 주유소, 충전소
+    bank: 'BK9',              # 은행
+    culture: 'CT1',           # 문화시설
+    real_estate: 'AG2',       # 중개업소
+    public_office: 'PO3',     # 공공기관
+    tourist_spot: 'AT4',      # 관광명소
+    accommodation: 'AD5',     # 숙박
+    restaurant: 'FD6',        # 음식점
+    pharmacy: 'PM9'           # 약국
   }.freeze
 
   RADIUS = 1000 # 반경 1km (미터)
@@ -82,14 +99,30 @@ class KakaoApiService
     end
   end
 
-  # 모든 카테고리 검색
+  # 모든 카테고리 검색 (18개)
   def search_all_categories(lat, lng)
     {
+      # 기존 5개
       medical: search_poi(lat, lng, CATEGORIES[:medical]),
       schools: search_poi(lat, lng, CATEGORIES[:school]),
       convenience_stores: search_poi(lat, lng, CATEGORIES[:convenience]),
       subway_stations: search_poi(lat, lng, CATEGORIES[:subway]),
-      cafes: search_poi(lat, lng, CATEGORIES[:cafe])
+      cafes: search_poi(lat, lng, CATEGORIES[:cafe]),
+
+      # 확장 13개
+      large_marts: search_poi(lat, lng, CATEGORIES[:large_mart]),
+      daycares: search_poi(lat, lng, CATEGORIES[:daycare]),
+      academies: search_poi(lat, lng, CATEGORIES[:academy]),
+      parkings: search_poi(lat, lng, CATEGORIES[:parking]),
+      gas_stations: search_poi(lat, lng, CATEGORIES[:gas_station]),
+      banks: search_poi(lat, lng, CATEGORIES[:bank]),
+      cultures: search_poi(lat, lng, CATEGORIES[:culture]),
+      real_estates: search_poi(lat, lng, CATEGORIES[:real_estate]),
+      public_offices: search_poi(lat, lng, CATEGORIES[:public_office]),
+      tourist_spots: search_poi(lat, lng, CATEGORIES[:tourist_spot]),
+      accommodations: search_poi(lat, lng, CATEGORIES[:accommodation]),
+      restaurants: search_poi(lat, lng, CATEGORIES[:restaurant]),
+      pharmacies: search_poi(lat, lng, CATEGORIES[:pharmacy])
     }
   end
 

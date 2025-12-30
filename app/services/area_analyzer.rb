@@ -8,8 +8,12 @@ class AreaAnalyzer
     cafe: 0.5
   }.freeze
 
-  def initialize(kakao_api = KakaoApiService.new)
+  def initialize(kakao_api = KakaoApiService.new, existing_facilities: nil)
     @kakao_api = kakao_api
+    @indicator_calculator = IndicatorCalculator.new
+    @facility_recommender = PublicFacilityRecommender.new
+    @report_generator = FacilityReportGenerator.new
+    @existing_facilities = existing_facilities || load_existing_facilities
   end
 
   def analyze(address)
@@ -33,7 +37,25 @@ class AreaAnalyzer
     # 6. 상세 분석 리포트
     detailed_analysis = build_detailed_analysis(pois, scores)
 
-    # 7. 결과 반환
+    # 7. 상위 지표 계산 (신규)
+    area_indicators = @indicator_calculator.calculate(pois)
+
+    # 8. 공공시설 추천 (신규) - 기존 시설 정보 전달
+    recommended_facilities = @facility_recommender.recommend(area_indicators, pois, @existing_facilities)
+
+    # 9. 기존 시설 통계
+    existing_facility_stats = calculate_existing_facility_stats(location[:lat], location[:lng])
+
+    # 10. 상세 보고서 생성
+    detailed_report = @report_generator.generate(
+      recommended_facilities,
+      area_indicators,
+      pois,
+      @existing_facilities,
+      location
+    )
+
+    # 11. 결과 반환
     {
       address: location[:address],
       coordinates: {
@@ -48,6 +70,10 @@ class AreaAnalyzer
         leisure: scores[:leisure].round(1),
         recommend: recommend_usage(grade)
       },
+      area_indicators: normalize_indicators(area_indicators),  # 신규
+      recommended_public_facilities: recommended_facilities,   # 신규
+      existing_facilities: existing_facility_stats,            # 신규 - 엑셀 데이터 통계
+      facility_report: detailed_report,                        # 신규 - 상세 보고서
       details: detailed_analysis,
       poi_list: poi_list
     }
@@ -201,5 +227,88 @@ class AreaAnalyzer
       name: nearest[:place_name],
       distance: nearest[:distance].to_i
     }
+  end
+
+  # 상위 지표 정규화 (0-100점)
+  def normalize_indicators(area_indicators)
+    max_possible = 50.0  # config와 동일
+
+    normalized = {}
+    area_indicators.each do |indicator_name, raw_score|
+      normalized_score = (raw_score / max_possible) * 100
+      normalized[indicator_name] = [[normalized_score, 0].max, 100].min.round(1)
+    end
+
+    normalized
+  end
+
+  # 엑셀 파일에서 기존 시설 데이터 로드
+  def load_existing_facilities
+    loader = FacilityDataLoader.new
+    loader.load_facilities
+  rescue => e
+    Rails.logger.error "Failed to load existing facilities: #{e.message}"
+    {}
+  end
+
+  # 기존 시설 통계 계산
+  def calculate_existing_facility_stats(lat, lng)
+    return {} if @existing_facilities.empty?
+
+    stats = {
+      total_count: 0,
+      nearby_count: 0,  # 반경 500m 이내
+      by_type: {}
+    }
+
+    @existing_facilities.each do |facility_type, items|
+      stats[:by_type][facility_type] = {
+        total: items.count,
+        nearby: 0,
+        nearest_distance: nil
+      }
+
+      stats[:total_count] += items.count
+
+      items.each do |item|
+        next unless item[:coordinates]
+
+        distance = calculate_distance(
+          lat, lng,
+          item[:coordinates][:lat],
+          item[:coordinates][:lng]
+        )
+
+        if distance <= 500
+          stats[:nearby_count] += 1
+          stats[:by_type][facility_type][:nearby] += 1
+        end
+
+        # 가장 가까운 시설 거리 업데이트
+        current_nearest = stats[:by_type][facility_type][:nearest_distance]
+        if current_nearest.nil? || distance < current_nearest
+          stats[:by_type][facility_type][:nearest_distance] = distance.round(0)
+        end
+      end
+    end
+
+    stats
+  end
+
+  # Haversine 공식으로 두 좌표 간 거리 계산 (미터)
+  def calculate_distance(lat1, lng1, lat2, lng2)
+    rad_per_deg = Math::PI / 180
+    earth_radius = 6371000 # meters
+
+    dlat = (lat2 - lat1) * rad_per_deg
+    dlng = (lng2 - lng1) * rad_per_deg
+
+    a = Math.sin(dlat / 2)**2 +
+        Math.cos(lat1 * rad_per_deg) * Math.cos(lat2 * rad_per_deg) *
+        Math.sin(dlng / 2)**2
+
+    c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+
+    earth_radius * c
   end
 end

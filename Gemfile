@@ -38,6 +38,9 @@ gem "httparty", "~> 0.22"
 # Environment variable management
 gem "dotenv-rails", "~> 3.1"
 
+# Excel file parsing
+gem "roo", "~> 2.10"
+
 # Deploy this application anywhere as a Docker container [https://kamal-deploy.org]
 gem "kamal", require: false
 
