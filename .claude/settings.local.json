@@ -21,7 +21,8 @@
       "Bash(ruby:*)",
       "Bash(wsl bash -c:*)",
       "Bash(dir c:UsersuserSpaceFitnul)",
-      "Bash(del \"c:\\Users\\user\\SpaceFit\\nul\")"
+      "Bash(del \"c:\\Users\\user\\SpaceFit\\nul\")",
+      "Bash(dir:*)"
     ],
     "deny": [],
     "ask": []

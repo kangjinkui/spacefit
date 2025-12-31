@@ -429,7 +429,7 @@
     async function searchAddress() {
       const address = document.getElementById('address').value.trim();
       const errorDiv = document.getElementById('error-message');
-      const resultsDiv = document.getElementById('results');
+      const resultsDiv = document.getElementById('results-summary');
 
       errorDiv.innerHTML = '';
 
@@ -1192,7 +1192,7 @@
       }
 
       // 새 시설 정보 추가
-      const resultsDiv = document.getElementById('results');
+      const resultsDiv = document.getElementById('results-summary');
       const facilityInfoHtml = `
         <div id="facility-info-section" class="facility-info">
           <div class="facility-info-title">📍 선택된 시설</div>
